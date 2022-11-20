@@ -1,0 +1,17 @@
+## Using Alembic
+
+```shell
+alembic init <script_directory_here>
+```
+
+## Alembic auto generate migrations
+
+```shell
+alembic revision --autogenerate
+```
+
+## Alembic migrate
+
+```shell
+alembic upgrade head
+```
