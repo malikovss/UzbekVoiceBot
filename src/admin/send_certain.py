@@ -1,10 +1,10 @@
 import asyncio
+
 from aiogram.dispatcher import FSMContext
 from aiogram.types import Message, ReplyKeyboardRemove
 
-
-from main import dp, bot, AdminSendCertain
 from keyboards.buttons import admin_markup, sure_markup, yes_no_markup
+from main import dp, bot, AdminSendCertain
 from .send_everyone import send_copied_post_to_user, send_progress_message
 
 
@@ -139,12 +139,3 @@ async def send_post(chat_id, state):
 
     await bot.send_message(chat_id, admin_stat, reply_markup=admin_markup)
     await sent_message.delete()
-
-
-
-
-
-
-
-
-

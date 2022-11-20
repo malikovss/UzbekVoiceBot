@@ -1,10 +1,9 @@
-from aiogram.types import Message
 from aiogram.dispatcher import FSMContext
+from aiogram.types import Message
 
-
+from keyboards.buttons import admin_markup, yes_no_markup
 from main import dp, bot, AdminBanCertain
 from utils.uzbekvoice.db import User, session
-from keyboards.buttons import admin_markup, yes_no_markup
 
 
 async def block_certain_func(chat_id):
@@ -52,12 +51,3 @@ async def admin_block_users(message: Message, state: FSMContext):
     session.commit()
     await state.finish()
     await bot.send_message(chat_id, 'Users have been baned ✅', reply_markup=admin_markup)
-
-
-
-
-
-
-
-
-

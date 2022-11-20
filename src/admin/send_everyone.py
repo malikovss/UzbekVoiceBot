@@ -1,12 +1,12 @@
 import asyncio
 
-from aiogram.types import Message, ReplyKeyboardRemove
 from aiogram.dispatcher import FSMContext
+from aiogram.types import Message, ReplyKeyboardRemove
 from aiogram.utils.exceptions import UserDeactivated, BotBlocked
 
+from keyboards.buttons import sure_markup, admin_markup
 from main import dp, bot, AdminSendEveryOne
 from utils.uzbekvoice.db import session, User
-from keyboards.buttons import sure_markup, admin_markup
 
 
 # Ask admin to send post

@@ -1,12 +1,13 @@
-from . import start
+from aiogram.dispatcher import FSMContext
+from aiogram.types import Message, CallbackQuery
+
+from main import dp
+from utils.helpers import delete_message_markup
 from . import admin
 from . import my_profile
+from . import start
 from .uzbekvoice import check_voice
 from .uzbekvoice import record_voice
-from main import bot, dp, ADMINS_ID
-from utils.helpers import delete_message_markup
-from aiogram.dispatcher import FSMContext
-from aiogram.types import Message, CallbackQuery, ParseMode, InlineKeyboardButton, InlineKeyboardMarkup
 
 
 # default handler

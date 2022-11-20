@@ -1,10 +1,11 @@
 import os
+
 from aiogram.dispatcher.filters import Filter
 from aiogram.types import Message, ReplyKeyboardRemove
-from utils.uzbekvoice import db
+
 from data.messages import msg_dict
-from main import bot, ADMINS_ID, dp, WEBHOOK_URL
 from keyboards.buttons import start_markup, register_markup
+from main import bot, ADMINS_ID, dp, WEBHOOK_URL
 from .uzbekvoice import db
 
 
@@ -69,6 +70,11 @@ async def on_startup(args):
     if os.getenv('WEBHOOK_HOST') is not None:
         await bot.set_webhook(WEBHOOK_URL)
 
+
+async def on_shutdown(args):
+    pass
+
+
 # Filter for checking registration of user
 class IsRegistered(Filter):
     key = "is_registered"
@@ -121,7 +127,3 @@ class IsSubscribedChannel(Filter):
 dp.filters_factory.bind(IsRegistered)
 dp.filters_factory.bind(IsBlockedUser)
 dp.filters_factory.bind(IsSubscribedChannel)
-
-
-
-

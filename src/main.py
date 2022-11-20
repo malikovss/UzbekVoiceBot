@@ -1,17 +1,11 @@
 import asyncio
+from os import getenv
+from pathlib import Path
 
 import redis
-
 from aiogram import Bot, Dispatcher
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.dispatcher.filters.state import State, StatesGroup
-
-from dotenv import load_dotenv
-from os import getenv
-
-load_dotenv()
-
-from pathlib import Path
 from dotenv import load_dotenv, find_dotenv
 from redis import Redis
 from rq import Queue
@@ -20,7 +14,6 @@ load_dotenv(find_dotenv())
 
 loop = asyncio.get_event_loop()
 storage = MemoryStorage()
-
 
 WEBHOOK_HOST = getenv('WEBHOOK_HOST')
 WEBHOOK_PATH = '/'

@@ -1,16 +1,21 @@
-import uuid
-import random
-import string
 import base64
+import logging
+import random
+import re
+import string
+import uuid
+
 import aiohttp
 import librosa
-import re
-from speechbrain.pretrained import VAD
 from rq import Retry
-from . import db
-from main import BASE_DIR, queue, bot
+from speechbrain.pretrained import VAD
+
 from keyboards.inline import my_profile_markup
+from main import BASE_DIR, queue, bot
+from . import db
 from .common_voice import HEADERS, GET_TEXT_URL, GET_VOICES_URL, common_voice
+
+logger = logging.getLogger(__name__)
 
 
 async def authorization_token(tg_id):
@@ -252,7 +257,6 @@ sample_sentences = [
 
 ]
 
-
 incorrect_clip_paths = [
     "src/incorrect_clips/1.mp3",
     "src/incorrect_clips/2.mp3",
@@ -349,7 +353,7 @@ async def download_file(download_url, voice_id):
 async def enqueue_operation(operation, chat_id):
     # if queue is not open
     if queue is None:
-        print('Queue is not open')
+        logger.info('Queue is not open')
         return common_voice.handle_operation(operation, chat_id)
     else:
         queue.enqueue(

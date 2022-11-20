@@ -84,3 +84,38 @@ GO_HOME_TEXT = 'Bosh menyu 🏠'
 
 DO_NOT_BREAK_RULES = 'Qoidalarni buzganingiz uchun qora roʻyxatga tushishingiz mumkin‼️'
 LISTEN_AUDIO_FIRST = f'🎧 Iltimos, avval ovozli xabarni eshitib ko\'ring\n\n{DO_NOT_BREAK_RULES}'
+
+REGIONS = [
+    "Andijon",
+    "Buxoro",
+    "Farg'ona",
+    "Jizzax",
+    "Sirdaryo",
+    "Xorazm",
+    "Namangan",
+    "Navoiy",
+    "Qashqadaryo",
+    "Qoraqalpog'iston",
+    "Samarqand",
+    "Surxondaryo",
+    "Toshkent viloyati",
+    "Toshkent shahri",
+]
+AGE_RANGES = [
+    "< 19",
+    "19-29",
+    "30-39",
+    "40-49",
+    "50-59",
+    "60-69",
+    "70-79",
+    "80-89",
+    "> 89",
+]
+LANGUAGES = [
+    "O'zbek tili",
+    "Qoraqalpoq tili",
+    "Rus tili",
+    "Tojik tili",
+    "Qozoq tili",
+]

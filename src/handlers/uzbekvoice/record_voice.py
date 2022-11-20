@@ -1,18 +1,33 @@
-import os
 from datetime import datetime, timedelta
+
 import aiogram.types
-from aiogram.dispatcher import FSMContext, filters
+import aiogram.types
+import aiogram.types
+import aiogram.types
+from aiogram.dispatcher import FSMContext
 from aiogram.types import Message, CallbackQuery
-from utils.uzbekvoice import db
-from main import dp, AskUserVoice, BASE_DIR
+
 from data.messages import RECORD_VOICE, CANCEL_MESSAGE
 from keyboards.buttons import start_markup, go_back_markup
 from keyboards.inline import text_markup, report_text_markup, confirm_voice_markup
-from utils.helpers import send_message, edit_reply_markup, send_voice, delete_message_markup, delete_message, \
-    IsRegistered, \
-    IsBlockedUser, IsSubscribedChannel
-from utils.uzbekvoice.helpers import get_sentence_to_read, check_if_audio_human_voice, check_if_audio_is_short, \
+from main import dp, AskUserVoice, BASE_DIR
+from utils.helpers import (
+    send_message,
+    edit_reply_markup,
+    send_voice,
+    delete_message_markup,
+    delete_message,
+    IsRegistered,
+    IsBlockedUser,
+    IsSubscribedChannel
+)
+from utils.uzbekvoice import db
+from utils.uzbekvoice.helpers import (
+    get_sentence_to_read,
+    check_if_audio_human_voice,
+    check_if_audio_is_short,
     enqueue_operation
+)
 
 
 # Handler that answers to Record Voice message

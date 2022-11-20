@@ -1,13 +1,11 @@
 from aiogram.types import Message
 
-from admin.unblock_certain import unblock_certain_func
-from data.messages import SEND_EVERYONE, BOT_STATISTICS, SEND_CERTAIN, BLOCK_CERTAIN, UNBLOCK_CERTAIN
-
 from admin.block_certain import block_certain_func
-from admin.send_everyone import send_everyone_func
 from admin.get_bot_stat import get_bot_stat_func
 from admin.send_certain import send_certain_func
-
+from admin.send_everyone import send_everyone_func
+from admin.unblock_certain import unblock_certain_func
+from data.messages import SEND_EVERYONE, BOT_STATISTICS, SEND_CERTAIN, BLOCK_CERTAIN, UNBLOCK_CERTAIN
 from keyboards.buttons import admin_markup
 from main import bot, dp, ADMINS_ID
 
@@ -21,7 +19,8 @@ async def ask_admin_commands(message: Message):
 # Answer to all admin commands
 
 
-@dp.message_handler(chat_id=ADMINS_ID, text=[SEND_EVERYONE, BOT_STATISTICS, SEND_CERTAIN, BLOCK_CERTAIN, UNBLOCK_CERTAIN])
+@dp.message_handler(chat_id=ADMINS_ID,
+                    text=[SEND_EVERYONE, BOT_STATISTICS, SEND_CERTAIN, BLOCK_CERTAIN, UNBLOCK_CERTAIN])
 async def admin_commands(message: Message):
     chat_id = message.chat.id
     admin_command = message.text

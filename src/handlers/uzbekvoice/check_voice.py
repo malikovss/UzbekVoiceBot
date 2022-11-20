@@ -1,21 +1,32 @@
-import time
 import os
-from aiogram.dispatcher import FSMContext
-from aiogram.types import Message, CallbackQuery, ParseMode, InlineKeyboardButton, InlineKeyboardMarkup, \
-    ReplyKeyboardRemove
+import time
 
-from main import dp, AskUserAction, bot
+from aiogram.dispatcher import FSMContext
+from aiogram.types import Message, CallbackQuery, ParseMode
+
+import utils.uzbekvoice.db as db
+from data.messages import CHECK_VOICE, CANCEL_MESSAGE, LISTEN_AUDIO_FIRST
 from keyboards.buttons import start_markup, go_back_markup
 from keyboards.inline import yes_no_markup, report_voice_markup
-from utils.helpers import send_message, send_voice, edit_reply_markup, delete_message_markup, IsRegistered, \
-    IsBlockedUser, IsSubscribedChannel
-from utils.uzbekvoice.helpers import get_voice_to_check, download_file, get_audio_duration, enqueue_operation, \
-    is_local_clip, is_local_clip_id, get_local_clip
-import utils.uzbekvoice.db as db
-
-from data.messages import VOICE_INCORRECT, VOICE_CORRECT, VOICE_REPORT, SKIP_STEP, REPORT_TEXT_1, \
-    REPORT_TEXT_2, REPORT_TEXT_3, REPORT_TEXT_4, REPORT_TEXT_5, CONFIRM_VOICE_TEXT, REJECT_VOICE_TEXT, \
-    VOICE_LEADERBOARD, VOTE_LEADERBOARD, CHECK_VOICE, CANCEL_MESSAGE, LISTEN_AUDIO_FIRST
+from main import dp, AskUserAction
+from utils.helpers import (
+    send_message,
+    send_voice,
+    edit_reply_markup,
+    delete_message_markup,
+    IsRegistered,
+    IsBlockedUser,
+    IsSubscribedChannel
+)
+from utils.uzbekvoice.helpers import (
+    get_voice_to_check,
+    download_file,
+    get_audio_duration,
+    enqueue_operation,
+    is_local_clip,
+    is_local_clip_id,
+    get_local_clip
+)
 
 
 # Handler that answers to Check Voice message

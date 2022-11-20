@@ -1,4 +1,7 @@
 from datetime import datetime
+from os import getenv
+
+from dotenv import load_dotenv, find_dotenv
 from sqlalchemy import (
     create_engine,
     BigInteger,
@@ -13,12 +16,9 @@ from sqlalchemy import (
     DATETIME,
     Float
 )
-from sqlalchemy.sql import func
 from sqlalchemy.orm import declarative_base, Session
 from sqlalchemy.sql import exists
-
-from dotenv import load_dotenv, find_dotenv
-from os import getenv
+from sqlalchemy.sql import func
 
 load_dotenv(find_dotenv())
 

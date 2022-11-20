@@ -1,6 +1,12 @@
-from aiogram.types import Message, ParseMode
+from datetime import datetime
+
+import aiohttp
+import pandas
 from aiogram.dispatcher import FSMContext
-from main import bot
+from aiogram.types import Message, ParseMode
+
+from data.messages import INSTRUCTIONS, LEADERBOARD, CANCEL_MESSAGE, ABOUT_PROJECT, msg_dict, VOICE_LEADERBOARD, \
+    VOTE_LEADERBOARD, OVERALL_STATS
 from keyboards.buttons import (
     native_languages_markup,
     share_phone_markup,
@@ -11,18 +17,13 @@ from keyboards.buttons import (
     start_markup,
     age_markup
 )
-from datetime import datetime
-import aiohttp
-import pandas
-
-from utils.uzbekvoice import db
 from main import UserRegistration, dp
-from utils.uzbekvoice.helpers import register_user, authorization_token
+from main import bot
 from utils.helpers import send_message, IsSubscribedChannel, IsRegistered
+from utils.uzbekvoice import db
 from utils.uzbekvoice.common_voice import CLIPS_LEADERBOARD_URL, VOTES_LEADERBOARD_URL, RECORDS_STAT_URL, \
     ACTIVITY_STAT_URL
-from data.messages import INSTRUCTIONS, LEADERBOARD, CANCEL_MESSAGE, ABOUT_PROJECT, msg_dict, VOICE_LEADERBOARD, \
-    VOTE_LEADERBOARD, OVERALL_STATS
+from utils.uzbekvoice.helpers import register_user, authorization_token
 
 
 @dp.message_handler(commands=['start'], state='*')
@@ -146,7 +147,8 @@ async def instructions(message: Message):
 
 @dp.message_handler(IsSubscribedChannel(), text=ABOUT_PROJECT)
 async def instructions(message: Message):
-    await bot.send_message(message.chat.id, msg_dict['about-project'], reply_markup=start_markup, parse_mode=ParseMode.MARKDOWN)
+    await bot.send_message(message.chat.id, msg_dict['about-project'], reply_markup=start_markup,
+                           parse_mode=ParseMode.MARKDOWN)
 
 
 @dp.message_handler(text=CANCEL_MESSAGE)
