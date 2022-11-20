@@ -3,6 +3,7 @@ from aiogram.dispatcher import FSMContext
 from aiogram.types import CallbackQuery
 from aiogram.types import Message
 
+from data import messages
 from data.messages import GO_HOME_TEXT, MY_PROFILE, MY_RATING
 from keyboards.buttons import go_back_markup, start_markup
 from keyboards.inline import edit_accent_markup, edit_lang_markup, edit_profile_markup, edit_age_markup
@@ -65,16 +66,14 @@ async def choose_field_handler(call: CallbackQuery, state: FSMContext):
         await send_message(call.from_user.id, 'ask-accent', markup=edit_accent_markup())
 
 
-@dp.callback_query_handler(state=EditProfile.edit_age, text=["< 19", "19-29", "30-39", "40-49", "50-59",
-                                                             "60-69", "70-79", "80-89", "> 89"])
+@dp.callback_query_handler(state=EditProfile.edit_age, text=messages.AGE_RANGES)
 async def edit_age(call: CallbackQuery):
     await db.edit_profile(call.from_user.id, age=call.data)
     await call.message.delete()
     await send_my_profile(call.from_user.id)
 
 
-@dp.callback_query_handler(state=EditProfile.edit_language, text=["O'zbek tili", "Qoraqalpoq tili", "Rus tili",
-                                                                  "Tojik tili", "Qozoq tili"])
+@dp.callback_query_handler(state=EditProfile.edit_language, text=messages.LANGUAGES)
 async def edit_lang(call: CallbackQuery):
     await db.edit_profile(call.from_user.id, lang=call.data)
     await call.message.delete()
@@ -82,9 +81,7 @@ async def edit_lang(call: CallbackQuery):
 
 
 @dp.callback_query_handler(state=EditProfile.edit_accent,
-                           text=["Andijon", "Buxoro", "Farg'ona", "Jizzax", "Sirdaryo", "Xorazm",
-                                 "Namangan", "Navoiy", "Qashqadaryo", "Qoraqalpog'iston", "Samarqand",
-                                 "Surxondaryo", "Toshkent viloyati", "Toshkent shahri"])
+                           text=messages.REGIONS)
 async def edit_accent(call: CallbackQuery):
     await db.edit_profile(call.from_user.id, accent=call.data)
     await call.message.delete()
