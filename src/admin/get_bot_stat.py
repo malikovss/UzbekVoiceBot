@@ -1,5 +1,6 @@
+from db.base import session
+from db.models import User
 from main import bot
-from utils.uzbekvoice.db import session, User
 
 
 # Function to get bot statistics

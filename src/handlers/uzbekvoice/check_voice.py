@@ -3,22 +3,7 @@ import time
 
 from aiogram.dispatcher import FSMContext
 from aiogram.types import Message, CallbackQuery, ParseMode
-
-import utils.uzbekvoice.db as db
-from data.messages import CHECK_VOICE, CANCEL_MESSAGE, LISTEN_AUDIO_FIRST
-from keyboards.buttons import start_markup, go_back_markup
-from keyboards.inline import yes_no_markup, report_voice_markup
-from main import dp, AskUserAction
-from utils.helpers import (
-    send_message,
-    send_voice,
-    edit_reply_markup,
-    delete_message_markup,
-    IsRegistered,
-    IsBlockedUser,
-    IsSubscribedChannel
-)
-from utils.uzbekvoice.helpers import (
+from utils.uzbekvoice.common_voice import (
     get_voice_to_check,
     download_file,
     get_audio_duration,
@@ -26,6 +11,26 @@ from utils.uzbekvoice.helpers import (
     is_local_clip,
     is_local_clip_id,
     get_local_clip
+)
+from db import shortcuts
+from data.messages import CHECK_VOICE, CANCEL_MESSAGE, LISTEN_AUDIO_FIRST
+from filters.custom_filters import (
+    IsRegistered,
+    IsBlockedUser,
+    IsSubscribedChannel
+)
+from filters.states import (
+    AskUserAction,
+)
+from keyboards.buttons import start_markup, go_back_markup
+from keyboards.inline import yes_no_markup, report_voice_markup
+from main import dp
+from utils.helpers import (
+    send_message,
+    send_voice,
+    edit_reply_markup,
+    delete_message_markup,
+
 )
 
 
@@ -104,23 +109,23 @@ async def ask_action_handler(call: CallbackQuery, state: FSMContext):
     if is_local_clip_id(voice_id):
         voice = get_local_clip(voice_id)
         if not voice["is_correct"] and command == 'accept':
-            db.add_user_violation(chat_id, 'false_positive')
-            db.increase_user_error_count(chat_id)
-            if not db.is_user_under_investigation(chat_id):
+            shortcuts.add_user_violation(chat_id, 'false_positive')
+            shortcuts.increase_user_error_count(chat_id)
+            if not shortcuts.is_user_under_investigation(chat_id):
                 try:
                     await call.answer(LISTEN_AUDIO_FIRST, show_alert=True)
                 except:
                     pass
         elif voice["is_correct"] and command == 'reject':
-            db.add_user_violation(chat_id, 'false_negative')
-            db.increase_user_error_count(chat_id)
-            if not db.is_user_under_investigation(chat_id):
+            shortcuts.add_user_violation(chat_id, 'false_negative')
+            shortcuts.increase_user_error_count(chat_id)
+            if not shortcuts.is_user_under_investigation(chat_id):
                 try:
                     await call.answer(LISTEN_AUDIO_FIRST, show_alert=True)
                 except:
                     pass
         else:
-            db.increase_user_correct_count(chat_id)
+            shortcuts.increase_user_correct_count(chat_id)
         try:
             await call.message.delete_reply_markup()
         except:
@@ -169,15 +174,15 @@ async def ask_report_type_handler(call: CallbackQuery, state: FSMContext):
         if is_local_clip_id(voice_id):
             voice = get_local_clip(voice_id)
             if voice["is_correct"]:
-                db.add_user_violation(chat_id, 'false_negative')
-                db.increase_user_error_count(chat_id)
-                if not db.is_user_under_investigation(chat_id):
+                shortcuts.add_user_violation(chat_id, 'false_negative')
+                shortcuts.increase_user_error_count(chat_id)
+                if not shortcuts.is_user_under_investigation(chat_id):
                     try:
                         await call.answer(LISTEN_AUDIO_FIRST, show_alert=True)
                     except:
                         pass
             else:
-                db.increase_user_correct_count(chat_id)
+                shortcuts.increase_user_correct_count(chat_id)
         else:
             await enqueue_operation({'type': 'report_clip', 'voice_id': voice_id, 'command': command}, chat_id)
             await state.update_data(
@@ -195,7 +200,7 @@ async def ask_report_type_handler(call: CallbackQuery, state: FSMContext):
 
 
 async def ask_to_check_new_voice(chat_id, state):
-    user = db.get_user(chat_id)
+    user = shortcuts.get_user(chat_id)
     voice = await get_voice_to_check(chat_id, state, user)
     if voice is None:
         await send_message(chat_id, 'no-voices-to-check', markup=start_markup)

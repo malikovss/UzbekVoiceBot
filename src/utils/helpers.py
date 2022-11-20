@@ -1,12 +1,54 @@
-import os
-
-from aiogram.dispatcher.filters import Filter
-from aiogram.types import Message, ReplyKeyboardRemove
+import base64
+import random
+import string
+import uuid
 
 from data.messages import msg_dict
-from keyboards.buttons import start_markup, register_markup
-from main import bot, ADMINS_ID, dp, WEBHOOK_URL
+from keyboards.inline import my_profile_markup
+from main import bot
 from .uzbekvoice import db
+
+
+async def authorization_token(tg_id):
+    user = db.get_user(tg_id)
+    auth = f"{user.uuid}:{user.access_token}".encode('ascii')
+    base64_bytes = base64.b64encode(auth)
+    base64_string = base64_bytes.decode('ascii')
+    return f'Basic {base64_string}'
+
+
+async def register_user(state, tg_id):
+    user_uid = uuid.uuid4()
+    access_token = ''.join(
+        random.choice(string.ascii_letters + string.digits) for _ in range(40)
+    )
+
+    await db.write_user(
+        tg_id=tg_id,
+        uuid=user_uid,
+        access_token=access_token,
+        full_name=state['full_name'],
+        phone_number=state['phone_number'],
+        gender=state['gender'],
+        accent_region=state['accent_region'],
+        year_of_birth=state['year_of_birth'],
+        native_language=state['native_language']
+    )
+
+
+async def send_my_profile(tg_id):
+    user = db.get_user(tg_id)
+    my_profile = [
+        f"👤 Mening profilim:\n\n"
+        f"ID: <code>{tg_id}</code>",
+        f"Ism: <b>{user['full_name']}</b>",
+        f"Telefon raqam: <b>{user['phone_number']}</b>",
+        f"Yosh oralig'i: <b>{str(user['year_of_birth'])}</b>",
+        f"Jinsi: <b>{user['gender']}</b>",
+        f"Ona-tili: <b>{user['native_language']}</b>",
+        f"Shevasi: <b>{user['accent_region']}</b>",
+    ]
+    await bot.send_message(tg_id, '\n'.join(my_profile), parse_mode="HTML", reply_markup=my_profile_markup())
 
 
 # Function to send waiting message
@@ -60,70 +102,3 @@ async def user_msg(message_str, args):
             user_message = msg_dict[message_str].format(*args)
 
     return user_message
-
-
-# Send notification to admin that bot started working
-async def on_startup(args):
-    for one_admin_id in ADMINS_ID:
-        await send_message(one_admin_id, 'admin-bot-start', markup=start_markup)
-
-    if os.getenv('WEBHOOK_HOST') is not None:
-        await bot.set_webhook(WEBHOOK_URL)
-
-
-async def on_shutdown(args):
-    pass
-
-
-# Filter for checking registration of user
-class IsRegistered(Filter):
-    key = "is_registered"
-
-    async def check(self, message: Message):
-
-        chat_id = message.chat.id
-        if db.user_exists(chat_id):
-            return True
-        else:
-            await send_message(chat_id, 'register', markup=register_markup)
-
-
-# Filter for checking whether user is banned
-class IsBlockedUser(Filter):
-    key = "is_blocked_user"
-
-    async def check(self, message: Message):
-        chat_id = message.chat.id
-        if db.user_banned(chat_id):
-            await send_message(chat_id, 'banned', markup=ReplyKeyboardRemove())
-            return False
-        else:
-            return True
-
-
-JOIN_CHANNEL_ID = os.getenv("JOIN_CHANNEL_ID")
-
-
-# Filter for checking whether user is banned
-class IsSubscribedChannel(Filter):
-    key = "is_subscribed_channel"
-
-    async def check(self, message: Message):
-        try:
-            if JOIN_CHANNEL_ID is None:
-                return True
-            chat_id = message.chat.id
-            check_member = await bot.get_chat_member(JOIN_CHANNEL_ID, chat_id)
-            if check_member.status not in ["member", "creator", "administrator"]:
-                await send_message(chat_id, 'channel')
-                return False
-            else:
-                return True
-        except Exception as err:
-            print('Error in IsSubscribedChannel', err)
-            return True
-
-
-dp.filters_factory.bind(IsRegistered)
-dp.filters_factory.bind(IsBlockedUser)
-dp.filters_factory.bind(IsSubscribedChannel)

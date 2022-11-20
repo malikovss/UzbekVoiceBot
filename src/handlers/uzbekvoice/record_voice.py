@@ -7,22 +7,28 @@ import aiogram.types
 from aiogram.dispatcher import FSMContext
 from aiogram.types import Message, CallbackQuery
 
+from core import config
 from data.messages import RECORD_VOICE, CANCEL_MESSAGE
+from db import shortcuts
+from filters.custom_filters import (
+    IsRegistered,
+    IsBlockedUser,
+    IsSubscribedChannel
+)
+from filters.states import (
+    AskUserVoice,
+)
 from keyboards.buttons import start_markup, go_back_markup
 from keyboards.inline import text_markup, report_text_markup, confirm_voice_markup
-from main import dp, AskUserVoice, BASE_DIR
+from main import dp
 from utils.helpers import (
     send_message,
     edit_reply_markup,
     send_voice,
     delete_message_markup,
     delete_message,
-    IsRegistered,
-    IsBlockedUser,
-    IsSubscribedChannel
 )
-from utils.uzbekvoice import db
-from utils.uzbekvoice.helpers import (
+from utils.uzbekvoice.common_voice import (
     get_sentence_to_read,
     check_if_audio_human_voice,
     check_if_audio_is_short,
@@ -65,7 +71,7 @@ async def ask_voice_handler(message: Message, state: FSMContext):
     text = data['text']
     text_id = text['id']
     text_to_read = text['text']
-    audio_file = str(BASE_DIR / 'downloads' / '{}_{}.ogg'.format(chat_id, text_id))
+    audio_file = str(config.BASE_DIR / 'downloads' / '{}_{}.ogg'.format(chat_id, text_id))
     await message.voice.download(destination_file=audio_file)
 
     if check_if_audio_is_short(audio_file, text_to_read):
@@ -115,7 +121,7 @@ async def ask_confirm_handler(call: CallbackQuery, state: FSMContext):
         pass
     if command == 'confirm-voice':
         voice_checking_message_id = await send_message(chat_id, 'voice-checking')
-        user = db.get_user(chat_id)
+        user = shortcuts.get_user(chat_id)
         validation_required = user["last_validated_at"] is None or user["last_validated_at"] < (
                 datetime.now() - timedelta(minutes=20))
         is_valid = len(check_if_audio_human_voice(audio_file)) != 0 if validation_required else True
@@ -127,7 +133,7 @@ async def ask_confirm_handler(call: CallbackQuery, state: FSMContext):
             return
         # if user passed validation, save current time
         if validation_required:
-            db.user_validated_now(chat_id)
+            shortcuts.user_validated_now(chat_id)
         await enqueue_operation({'type': 'send_voice', 'file_directory': audio_file, 'sentence_id': text_id}, chat_id)
         await state.update_data(
             recorded_sentence_ids=[

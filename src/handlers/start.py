@@ -5,8 +5,15 @@ import pandas
 from aiogram.dispatcher import FSMContext
 from aiogram.types import Message, ParseMode
 
-from data.messages import INSTRUCTIONS, LEADERBOARD, CANCEL_MESSAGE, ABOUT_PROJECT, msg_dict, VOICE_LEADERBOARD, \
-    VOTE_LEADERBOARD, OVERALL_STATS
+from data import messages
+from db import shortcuts
+from filters.custom_filters import (
+    IsSubscribedChannel,
+    IsRegistered
+)
+from filters.states import (
+    UserRegistration,
+)
 from keyboards.buttons import (
     native_languages_markup,
     share_phone_markup,
@@ -17,19 +24,17 @@ from keyboards.buttons import (
     start_markup,
     age_markup
 )
-from main import UserRegistration, dp
-from main import bot
-from utils.helpers import send_message, IsSubscribedChannel, IsRegistered
-from utils.uzbekvoice import db
+from main import dp
+from utils.helpers import register_user, authorization_token
+from utils.helpers import send_message
 from utils.uzbekvoice.common_voice import CLIPS_LEADERBOARD_URL, VOTES_LEADERBOARD_URL, RECORDS_STAT_URL, \
     ACTIVITY_STAT_URL
-from utils.uzbekvoice.helpers import register_user, authorization_token
 
 
 @dp.message_handler(commands=['start'], state='*')
 async def start_command(message: Message, state: FSMContext):
     await state.finish()
-    if db.user_exists(message.chat.id):
+    if shortcuts.user_exists(message.chat.id):
         await send_message(message.chat.id, 'welcome-text', markup=start_markup)
     else:
         await send_message(message.chat.id, 'start', markup=register_markup)
@@ -38,7 +43,7 @@ async def start_command(message: Message, state: FSMContext):
 # Answer to all bot commands
 @dp.message_handler(text="👤 Ro'yxatdan o'tish")
 async def register_command(message: Message):
-    if not db.user_exists(message.chat.id):
+    if not shortcuts.user_exists(message.chat.id):
         await UserRegistration.full_name.set()
         await send_message(message.chat.id, 'ask-full-name')
     else:
@@ -81,13 +86,7 @@ async def get_gender(message: Message, state: FSMContext):
 
 @dp.message_handler(state=UserRegistration.native_language)
 async def native_language(message: Message, state: FSMContext):
-    if message.text in [
-        "O'zbek tili",
-        "Qoraqalpoq tili",
-        "Rus tili",
-        "Tojik tili",
-        "Qozoq tili"
-    ]:
+    if message.text in messages.LANGUAGES:
         async with state.proxy() as data:
             data["native_language"] = message.text
 
@@ -99,20 +98,7 @@ async def native_language(message: Message, state: FSMContext):
 
 @dp.message_handler(state=UserRegistration.accent_region)
 async def get_accent_region(message: Message, state: FSMContext):
-    if (message.text in ["Andijon",
-                         "Buxoro",
-                         "Farg'ona",
-                         "Jizzax",
-                         "Sirdaryo",
-                         "Xorazm",
-                         "Namangan",
-                         "Navoiy",
-                         "Qashqadaryo",
-                         "Qoraqalpog'iston",
-                         "Samarqand",
-                         "Surxondaryo",
-                         "Toshkent viloyati",
-                         "Toshkent shahri"]):
+    if message.text in messages.REGIONS:
         async with state.proxy() as data:
             data["accent_region"] = message.text
         await send_message(message.chat.id, 'ask-birth-year', markup=age_markup)
@@ -124,8 +110,7 @@ async def get_accent_region(message: Message, state: FSMContext):
 @dp.message_handler(state=UserRegistration.year_of_birth)
 async def finish(message: Message, state: FSMContext):
     async with state.proxy() as data:
-        if message.text in ["< 19", "19-29", "30-39", "40-49", "50-59",
-                            "60-69", "70-79", "80-89", "> 89"]:
+        if message.text in messages.AGE_RANGES:
             data["year_of_birth"] = message.text
             await register_user(data, message.chat.id)
             await send_message(message.chat.id, 'register-success', markup=start_markup)
@@ -135,28 +120,28 @@ async def finish(message: Message, state: FSMContext):
             return await UserRegistration.year_of_birth.set()
 
 
-@dp.message_handler(IsSubscribedChannel(), text=LEADERBOARD)
+@dp.message_handler(IsSubscribedChannel(), text=messages.LEADERBOARD)
 async def leaderboard(message: Message):
     await send_message(message.chat.id, 'leaderboard', markup=leader_markup)
 
 
-@dp.message_handler(IsSubscribedChannel(), text=INSTRUCTIONS)
+@dp.message_handler(IsSubscribedChannel(), text=messages.INSTRUCTIONS)
 async def instructions(message: Message):
     await send_message(message.chat.id, 'instructions', markup=start_markup)
 
 
-@dp.message_handler(IsSubscribedChannel(), text=ABOUT_PROJECT)
+@dp.message_handler(IsSubscribedChannel(), text=messages.ABOUT_PROJECT)
 async def instructions(message: Message):
-    await bot.send_message(message.chat.id, msg_dict['about-project'], reply_markup=start_markup,
-                           parse_mode=ParseMode.MARKDOWN)
+    await message.answer(messages.msg_dict['about-project'], reply_markup=start_markup,
+                         parse_mode=ParseMode.MARKDOWN)
 
 
-@dp.message_handler(text=CANCEL_MESSAGE)
+@dp.message_handler(text=messages.CANCEL_MESSAGE)
 async def go_back(message: Message):
-    await bot.send_message(message.chat.id, 'Bosh menyu: ', reply_markup=start_markup)
+    await message.answer('Bosh menyu: ', reply_markup=start_markup)
 
 
-@dp.message_handler(IsRegistered(), IsSubscribedChannel(), text=VOICE_LEADERBOARD)
+@dp.message_handler(IsRegistered(), IsSubscribedChannel(), text=messages.VOICE_LEADERBOARD)
 async def voice_leaderboard(message: Message):
     headers = {
         'Authorization': await authorization_token(message.chat.id)
@@ -182,15 +167,14 @@ async def voice_leaderboard(message: Message):
     leaderboard_text.index.name = '№'
     leaderboard_text = '```' + leaderboard_text.to_string() + '```'
 
-    await bot.send_message(
-        message.chat.id,
+    await message.answer(
         leaderboard_text,
         reply_markup=start_markup,
         parse_mode=ParseMode.MARKDOWN
     )
 
 
-@dp.message_handler(IsRegistered(), IsSubscribedChannel(), text=VOTE_LEADERBOARD)
+@dp.message_handler(IsRegistered(), IsSubscribedChannel(), text=messages.VOTE_LEADERBOARD)
 async def vote_leaderboard(message: Message):
     headers = {
         'Authorization': await authorization_token(message.chat.id)
@@ -216,15 +200,14 @@ async def vote_leaderboard(message: Message):
     leaderboard_text.index.name = '№'
     leaderboard_text = '```' + leaderboard_text.to_string() + '```'
 
-    await bot.send_message(
-        message.chat.id,
+    await message.answer(
         leaderboard_text,
         reply_markup=start_markup,
         parse_mode=ParseMode.MARKDOWN
     )
 
 
-@dp.message_handler(IsRegistered(), IsSubscribedChannel(), text=OVERALL_STATS)
+@dp.message_handler(IsRegistered(), IsSubscribedChannel(), text=messages.OVERALL_STATS)
 async def stats(message: Message):
     headers = {
         'Authorization': await authorization_token(message.chat.id)
@@ -255,8 +238,7 @@ async def stats(message: Message):
 ⌛ Bugun {stats_hour}:00da aktivlar soni: {users_count}
     """
 
-    await bot.send_message(
-        message.chat.id,
+    await message.answer(
         text=stat_message,
         reply_markup=start_markup,
         parse_mode=ParseMode.MARKDOWN

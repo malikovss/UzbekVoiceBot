@@ -2,9 +2,11 @@ import pandas
 from aiogram.dispatcher import FSMContext
 from aiogram.types import Message, ParseMode
 
+from db.base import session
+from db.models import User
+from filters.states import AdminUnbanCertain
 from keyboards.buttons import admin_markup, yes_no_markup
-from main import dp, bot, AdminUnbanCertain
-from utils.uzbekvoice.db import User, session
+from main import dp, bot
 
 
 async def unblock_certain_func(chat_id):

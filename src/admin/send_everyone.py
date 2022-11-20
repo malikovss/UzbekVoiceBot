@@ -4,9 +4,11 @@ from aiogram.dispatcher import FSMContext
 from aiogram.types import Message, ReplyKeyboardRemove
 from aiogram.utils.exceptions import UserDeactivated, BotBlocked
 
+from db.base import session
+from db.models import User
+from filters.states import AdminSendEveryOne
 from keyboards.buttons import sure_markup, admin_markup
-from main import dp, bot, AdminSendEveryOne
-from utils.uzbekvoice.db import session, User
+from main import dp, bot
 
 
 # Ask admin to send post

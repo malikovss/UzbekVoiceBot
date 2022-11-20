@@ -3,8 +3,9 @@ import asyncio
 from aiogram.dispatcher import FSMContext
 from aiogram.types import Message, ReplyKeyboardRemove
 
+from filters.states import AdminSendCertain
 from keyboards.buttons import admin_markup, sure_markup, yes_no_markup
-from main import dp, bot, AdminSendCertain
+from main import dp, bot
 from .send_everyone import send_copied_post_to_user, send_progress_message
 
 

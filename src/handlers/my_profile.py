@@ -1,22 +1,35 @@
-import aiohttp
+from aiogram import types
 from aiogram.dispatcher import FSMContext
-from aiogram.types import CallbackQuery
-from aiogram.types import Message
 
 from data import messages
-from data.messages import GO_HOME_TEXT, MY_PROFILE, MY_RATING
+from db import shortcuts
+from filters.custom_filters import (
+    IsRegistered,
+    IsSubscribedChannel,
+)
+from filters.states import (
+    EditProfile,
+)
 from keyboards.buttons import go_back_markup, start_markup
-from keyboards.inline import edit_accent_markup, edit_lang_markup, edit_profile_markup, edit_age_markup
-from main import dp, bot, EditProfile
-from utils.helpers import IsRegistered, IsSubscribedChannel, delete_message_markup, send_message
-from utils.uzbekvoice import db
-from utils.uzbekvoice.common_voice import CLIPS_LEADERBOARD_URL, VOTES_LEADERBOARD_URL
-from utils.uzbekvoice.helpers import authorization_token, send_my_profile
+from keyboards.inline import (
+    edit_accent_markup,
+    edit_lang_markup,
+    edit_profile_markup,
+    edit_age_markup
+)
+from main import dp
+from utils.helpers import (
+    authorization_token,
+    send_my_profile,
+    delete_message_markup,
+    send_message
+)
+from utils.uzbekvoice import common_voice
 
 
 # Handler that answers to cancel callbacks
-@dp.callback_query_handler(state=EditProfile.all_states, text=GO_HOME_TEXT)
-async def cancel_message_handler(call: CallbackQuery, state: FSMContext):
+@dp.callback_query_handler(state=EditProfile.all_states, text=messages.GO_HOME_TEXT)
+async def cancel_message_handler(call: types.CallbackQuery, state: FSMContext):
     data = await state.get_data()
     if 'reply_message_id' in data:
         reply_message_id = data['reply_message_id']
@@ -25,8 +38,8 @@ async def cancel_message_handler(call: CallbackQuery, state: FSMContext):
     await state.finish()
 
 
-@dp.message_handler(IsRegistered(), IsSubscribedChannel(), text=MY_PROFILE)
-async def my_profile(message: Message, state: FSMContext):
+@dp.message_handler(IsRegistered(), IsSubscribedChannel(), text=messages.MY_PROFILE)
+async def my_profile(message: types.Message, state: FSMContext):
     data = await state.get_data()
     if 'reply_message_id' in data:
         reply_message_id = data['reply_message_id']
@@ -35,23 +48,23 @@ async def my_profile(message: Message, state: FSMContext):
 
 
 @dp.callback_query_handler(text="⚙️ Sozlamalar")
-async def edit_profile(call: CallbackQuery):
-    if db.user_exists(call.from_user.id):
+async def edit_profile(call: types.CallbackQuery):
+    if shortcuts.user_exists(call.from_user.id):
         await EditProfile.choose_field_to_edit.set()
         await call.message.delete()
         await send_message(call.from_user.id, 'choose-field-to-edit', markup=edit_profile_markup())
 
 
 @dp.callback_query_handler(text="⚙️ Sozlamalar", state='*')
-async def edit_profile(call: CallbackQuery):
-    if db.user_exists(call.from_user.id):
+async def edit_profile(call: types.CallbackQuery):
+    if shortcuts.user_exists(call.from_user.id):
         await EditProfile.choose_field_to_edit.set()
         await call.message.delete()
         await send_message(call.from_user.id, 'choose-field-to-edit', markup=edit_profile_markup())
 
 
 @dp.callback_query_handler(state=EditProfile.choose_field_to_edit, text=['edit-age', 'edit-lang', 'edit-accent'])
-async def choose_field_handler(call: CallbackQuery, state: FSMContext):
+async def choose_field_handler(call: types.CallbackQuery, state: FSMContext):
     call_data = str(call.data)
     await call.message.delete()
     if call_data == 'edit-age':
@@ -67,52 +80,32 @@ async def choose_field_handler(call: CallbackQuery, state: FSMContext):
 
 
 @dp.callback_query_handler(state=EditProfile.edit_age, text=messages.AGE_RANGES)
-async def edit_age(call: CallbackQuery):
-    await db.edit_profile(call.from_user.id, age=call.data)
+async def edit_age(call: types.CallbackQuery):
+    await shortcuts.edit_profile(call.from_user.id, age=call.data)
     await call.message.delete()
     await send_my_profile(call.from_user.id)
 
 
 @dp.callback_query_handler(state=EditProfile.edit_language, text=messages.LANGUAGES)
-async def edit_lang(call: CallbackQuery):
-    await db.edit_profile(call.from_user.id, lang=call.data)
+async def edit_lang(call: types.CallbackQuery):
+    await shortcuts.edit_profile(call.from_user.id, lang=call.data)
     await call.message.delete()
     await send_my_profile(call.from_user.id)
 
 
 @dp.callback_query_handler(state=EditProfile.edit_accent,
                            text=messages.REGIONS)
-async def edit_accent(call: CallbackQuery):
-    await db.edit_profile(call.from_user.id, accent=call.data)
+async def edit_accent(call: types.CallbackQuery):
+    await shortcuts.edit_profile(call.from_user.id, accent=call.data)
     await call.message.delete()
     await send_my_profile(call.from_user.id)
 
 
-@dp.message_handler(IsRegistered(), IsSubscribedChannel(), text=MY_RATING)
-async def vote_leaderboard(message: Message):
-    headers = {
-        'Authorization': await authorization_token(message.chat.id),
-    }
-
-    async with aiohttp.ClientSession() as session:
-        async with session.get(VOTES_LEADERBOARD_URL, headers=headers) as get_request:
-            votes_leaderboard = await get_request.json()
-            given_votes = 0
-            votes_position = 0
-            for i in votes_leaderboard:
-                if i['you'] is True:
-                    given_votes = i['total']
-                    votes_position = i['position'] + 1
-
-    async with aiohttp.ClientSession() as session:
-        async with session.get(CLIPS_LEADERBOARD_URL, headers=headers) as get_request:
-            clips_leaderboard = await get_request.json()
-            recorded_clips = 0
-            clips_position = 0
-            for i in clips_leaderboard:
-                if i['you'] is True:
-                    recorded_clips = i['total']
-                    clips_position = i['position'] + 1
+@dp.message_handler(IsRegistered(), IsSubscribedChannel(), text=messages.MY_RATING)
+async def vote_leaderboard(message: types.Message):
+    token = await authorization_token(message.chat.id)
+    given_votes, votes_position = await common_voice.get_votes_leaderboard(token)
+    recorded_clips, clips_position = await common_voice.get_clips_leaderboard(token)
 
     my_stats = [
         f"ID: <code>{message.chat.id}</code>\n",
@@ -123,4 +116,4 @@ async def vote_leaderboard(message: Message):
         f"📊 Ovoz tekshirishdagi o'rningiz: {votes_position}"
     ]
 
-    await bot.send_message(message.chat.id, "\n".join(my_stats), parse_mode="HTML", reply_markup=go_back_markup)
+    await message.answer("\n".join(my_stats), parse_mode="HTML", reply_markup=go_back_markup)

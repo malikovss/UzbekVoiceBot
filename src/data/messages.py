@@ -1,6 +1,4 @@
 msg_dict = {
-    'admin-bot-start': 'Bot ishga tushurildi',
-
     'start': 'Assalomu alaykum, @UzbekVoiceBot\'dan foydalanish uchun ro\'yxatdan o\'ting',
     'register': '@UzbekVoiceBot\'dan foydalanish uchun ro\'yxatdan o\'ting',
 

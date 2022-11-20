@@ -1,9 +1,11 @@
 from aiogram.dispatcher import FSMContext
 from aiogram.types import Message
 
+from db.base import session
+from db.models import User
+from filters.states import AdminBanCertain
 from keyboards.buttons import admin_markup, yes_no_markup
-from main import dp, bot, AdminBanCertain
-from utils.uzbekvoice.db import User, session
+from main import dp, bot
 
 
 async def block_certain_func(chat_id):
