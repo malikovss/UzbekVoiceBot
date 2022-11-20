@@ -10,14 +10,12 @@ from rq import Retry
 from . import db
 from main import BASE_DIR, queue, bot
 from keyboards.inline import my_profile_markup
-from .common_voice import HEADERS, GET_TEXT_URL, GET_VOICES_URL, handle_operation
+from .common_voice import HEADERS, GET_TEXT_URL, GET_VOICES_URL, common_voice
 
 
 async def authorization_token(tg_id):
     user = db.get_user(tg_id)
-    uuid = user.uuid
-    access_token = user.access_token
-    auth = f"{uuid}:{access_token}".encode('ascii')
+    auth = f"{user.uuid}:{user.access_token}".encode('ascii')
     base64_bytes = base64.b64encode(auth)
     base64_string = base64_bytes.decode('ascii')
     return f'Basic {base64_string}'
@@ -352,7 +350,7 @@ async def enqueue_operation(operation, chat_id):
     # if queue is not open
     if queue is None:
         print('Queue is not open')
-        return handle_operation(operation, chat_id)
+        return common_voice.handle_operation(operation, chat_id)
     else:
         queue.enqueue(
             'utils.uzbekvoice.common_voice.handle_operation',

@@ -1,6 +1,11 @@
-import os
 import json
+import logging
+import os
+from typing import Optional, Any
+
 import aiohttp
+
+logger = logging.getLogger(__name__)
 
 HEADERS = {
     'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) '
@@ -21,124 +26,131 @@ RECORDS_STAT_URL = 'https://common.uzbekvoice.ai/api/v1/uz/clips/stats'
 ACTIVITY_STAT_URL = 'https://common.uzbekvoice.ai/api/v1/uz/clips/voices'
 
 
-async def send_text_voice(token, file_directory, text_id):
-    headers = {
-        'sentence_id': text_id,
-        'Content-Type': 'audio/ogg',
-        'Authorization': token,
-        **HEADERS,
-    }
-    data = open(file_directory, 'rb')
+class CommonVoiceError(Exception):
+    pass
 
-    async with aiohttp.ClientSession() as session:
-        async with session.post(SEND_VOICE_URL, headers=headers, data=data) as sent_voice:
-            status = sent_voice.status
-            if status == 204 or status == 200:
+
+class CommonVoice:
+    BASE_URL = "https://common.uzbekvoice.ai/api/v1"
+
+    def __init__(self):
+        self._session: Optional[aiohttp.ClientSession] = None
+
+    @property
+    def session(self):
+        if self._session is None or self._session.closed:
+            self._session = aiohttp.ClientSession()
+        return self._session
+
+    def _make_url(self, path: str):
+        if not path.startswith('/'):
+            path = "/" + path
+        return self.BASE_URL + path
+
+    async def _make_request(
+            self, method: str,
+            path: str,
+            data: Any = None,
+            headers: dict = None,
+            error_message: str = None
+    ):
+        async with self.session.request(method, self._make_url(path), headers=headers, data=data) as response:
+            if response.status == 204 or response.status == 200:
                 return
-            else:
-                raise Exception("Error sending voice")
+            raise CommonVoiceError(error_message)
+
+    async def send_text_voice(self, token, file_directory, text_id):
+        if not os.path.exists(file_directory):
+            logger.error(f"File not found {file_directory}")
+        else:
+            headers = {
+                'sentence_id': text_id,
+                'Content-Type': 'audio/ogg',
+                'Authorization': token,
+                **HEADERS,
+            }
+            with open(file_directory, 'rb') as data:
+                await self._make_request(
+                    'POST',
+                    path='/uz/clips',
+                    data=data,
+                    headers=headers,
+                    error_message='Error sending voice'
+                )
+
+    async def send_voice_vote(self, token, voice_id, is_valid):
+        headers = {
+            'Content-Type': 'application/json',
+            'Authorization': token,
+            **HEADERS,
+        }
+        data = {'challenge': 'null', "isValid": is_valid}
+        await self._make_request(
+            'POST',
+            path=f"/uz/clips/{voice_id}/votes",
+            data=data,
+            headers=headers,
+            error_message='Error sending vote'
+        )
+
+    async def skip_voice(self, token, voice_id):
+        headers = {
+            'Authorization': token,
+            **HEADERS,
+        }
+        await self._make_request(
+            'POST',
+            path=f"/skipped_clips/{voice_id}",
+            headers=headers,
+            error_message="Error skipping voice"
+        )
+
+    async def skip_sentence(self, token, sentence_id):
+        headers = {
+            'Authorization': token,
+            **HEADERS,
+        }
+        await self._make_request(
+            'POST',
+            path=f"/skipped_sentences/{sentence_id}",
+            headers=headers,
+            error_message="Error skipping sentence"
+        )
+
+    async def report_function(self, token, kind, id_to_report, report_type):
+        headers = {
+            'Content-Type': 'application/json',
+            'Authorization': token,
+            **HEADERS,
+        }
+        _report_types = {
+            'report_1': 'offensive-language',
+            'report_2': 'grammar-or-spelling',
+            'report_3': 'different-language',
+        }
+        reason = _report_types.get(report_type) or 'difficult-pronounce'
+        data = {"kind": kind, "id": id_to_report, "reasons": [reason]}
+        await self._make_request(
+            'POST',
+            path='/reports',
+            data=json.dumps(data),
+            headers=headers,
+            error_message='Error reporting'
+        )
+
+    async def handle_operation(self, token: str, operation: dict):
+        voice_id, sentence_id = operation.get('voice_id'), operation.get('sentence_id')
+        _methods = {
+            'vote': self.send_voice_vote(token, voice_id, operation["command"] == 'accept'),
+            'report_clip': self.report_function(token, 'clip', voice_id, operation["command"]),
+            'skip_clip': self.skip_voice(token, voice_id),
+            'report_sentence': self.report_function(token, 'sentence', sentence_id, operation["command"]),
+            'skip_sentence': self.skip_sentence(token, sentence_id),
+            'send_voice': self.send_text_voice(token, operation["file_directory"], sentence_id)
+        }
+        if operation['type'] in _methods:
+            await _methods[operation['type']]
+        raise CommonVoiceError("Unknown operation type")
 
 
-
-async def send_voice_vote(token, voice_id, is_valid):
-    headers = {
-        'Content-Type': 'application/json',
-        'Authorization': token,
-        **HEADERS,
-    }
-
-    data = {'challenge': 'null', "isValid": is_valid}
-    request_url = VOICE_VOTE_URL.format(voice_id)
-    async with aiohttp.ClientSession() as session:
-        async with session.post(request_url, data=json.dumps(data), headers=headers) as response:
-            status = response.status
-            if status == 200 or status == 204:
-                return
-            else:
-                raise Exception("Error sending vote")
-
-
-
-async def skip_voice(token, voice_id):
-    headers = {
-        'Authorization': token,
-        **HEADERS,
-    }
-
-    request_url = SKIP_VOICE_URL.format(int(voice_id))
-    async with aiohttp.ClientSession() as session:
-        async with session.post(request_url, headers=headers) as response:
-            status = response.status
-            if status == 204 or status == 200:
-                return
-            else:
-                raise Exception("Error skipping voice")
-
-
-
-async def skip_sentence(token, sentence_id):
-    headers = {
-        'Authorization': token,
-        **HEADERS,
-    }
-
-    request_url = SKIP_SENTENCE_URL.format(sentence_id)
-    async with aiohttp.ClientSession() as session:
-        async with session.post(request_url, headers=headers) as response:
-            status = response.status
-            if status == 204 or status == 200:
-                return
-            else:
-                raise Exception("Error skipping sentence")
-
-
-
-async def report_function(token, kind, id_to_report, report_type):
-    headers = {
-        'Content-Type': 'application/json',
-        'Authorization': token,
-        **HEADERS,
-    }
-
-    if report_type == 'report_1':
-        reason = 'offensive-language'
-    elif report_type == 'report_2':
-        reason = 'grammar-or-spelling'
-    elif report_type == 'report_3':
-        reason = 'different-language'
-    else:
-        reason = 'difficult-pronounce'
-
-    data = {"kind": kind, "id": id_to_report, "reasons": [reason]}
-    print(data)
-    async with aiohttp.ClientSession() as session:
-        async with session.post(REPORT_URL, data=json.dumps(data), headers=headers) as response:
-            status = response.status
-            if status == 204 or status == 200:
-                return
-            else:
-                raise Exception("Error reporting")
-
-
-async def handle_operation(token, operation):
-    voice_id = operation['voice_id'] if 'voice_id' in operation else None
-    sentence_id = operation['sentence_id'] if 'sentence_id' in operation else None
-    if operation["type"] == "vote":
-        return await send_voice_vote(token, voice_id, operation["command"] == 'accept')
-    elif operation["type"] == "report_clip":
-        return await report_function(token, 'clip', voice_id, operation["command"])
-    elif operation["type"] == "skip_clip":
-        return await skip_voice(token, voice_id)
-    elif operation["type"] == "report_sentence":
-        return await report_function(token, 'sentence', sentence_id, operation["command"])
-    elif operation["type"] == "skip_sentence":
-        return await skip_sentence(token, sentence_id)
-    elif operation["type"] == "send_voice":
-        if not os.path.exists(operation["file_directory"]):
-            print("File not found", operation["file_directory"])
-            return
-        await send_text_voice(token, operation["file_directory"], sentence_id)
-        return
-
-    # otherwise throw
-    raise Exception("Unknown operation type")
+common_voice = CommonVoice()
