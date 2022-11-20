@@ -1,4 +1,13 @@
+from datetime import datetime
+
+from sqlalchemy import insert, exists, select, update
+from sqlalchemy.orm import Session
+
+from . import models
+
+
 async def write_user(
+        session: Session,
         tg_id,
         uuid,
         access_token,
@@ -9,124 +18,118 @@ async def write_user(
         year_of_birth,
         native_language
 ):
-    with engine.connect() as conn:
-        create_user = insert(user_table).values(
-            tg_id=tg_id,
-            uuid=uuid,
-            access_token=access_token,
-            full_name=full_name,
-            phone_number=phone_number,
-            gender=gender,
-            accent_region=accent_region,
-            year_of_birth=year_of_birth,
-            native_language=native_language,
-        )
+    create_user = insert(models.User).values(
+        tg_id=tg_id,
+        uuid=uuid,
+        access_token=access_token,
+        full_name=full_name,
+        phone_number=phone_number,
+        gender=gender,
+        accent_region=accent_region,
+        year_of_birth=year_of_birth,
+        native_language=native_language,
+    )
 
-        conn.execute(create_user)
-        session.commit()
-        return uuid, access_token
-
-
-def user_exists(tg_id):
-    with engine.connect() as conn:
-        q = session.query(exists().where(User.tg_id == tg_id)).scalar()
-        return q
+    session.execute(create_user)
+    session.commit()
+    return uuid, access_token
 
 
-def user_banned(tg_id):
-    with engine.connect() as conn:
-        q = select(user_table).where(user_table.c.tg_id == tg_id)
-        user = conn.execute(q).first()
-        return user is not None and user.is_banned
+def user_exists(session: Session, tg_id):
+    q = session.query(exists().where(models.User.tg_id == tg_id)).scalar()
+    return q
 
 
-def get_user(tg_id):
-    with engine.connect() as conn:
-        q = select(user_table).where(user_table.c.tg_id == tg_id)
-        return conn.execute(q).first()
+def user_banned(session: Session, tg_id):
+    q = select(models.User).where(models.User.tg_id == tg_id)
+    user = session.execute(q).scalar()
+    return user is not None and user.is_banned
+
+
+def get_user(session: Session, tg_id):
+    q = select(models.User).where(models.User.tg_id == tg_id)
+    return session.execute(q).scalar()
 
 
 def add_user_violation(
+        session: Session,
         tg_id,
         violation_type
 ):
-    with engine.connect() as conn:
-        user = get_user(tg_id)
-        conn.execute(
-            insert(violation_table).values(
-                type=violation_type,
-                client_id=user.uuid
-            )
+    user = get_user(session, tg_id)
+    session.execute(
+        insert(models.Violations).values(
+            type=violation_type,
+            client_id=user.uuid
         )
-        session.commit()
+    )
+    session.commit()
 
 
 def is_user_under_investigation(
+        session: Session,
         tg_id,
 ):
-    with engine.connect() as conn:
-        user = get_user(tg_id)
-        return user.under_investigation
+    user = get_user(session, tg_id)
+    return user.under_investigation
 
 
 def increase_user_error_count(
+        session: Session,
         tg_id
 ):
-    with engine.connect() as conn:
-        user = get_user(tg_id)
-        q = update(user_table).where(user_table.c.tg_id == tg_id).values(
-            error_count=user_table.c.error_count + 1,
-            karma=user_table.c.karma - 1,
-            verification_probability=min(user.verification_probability + 0.2, 0.8)
-        )
-        conn.execute(q)
-        session.commit()
+    user = get_user(session, tg_id)
+    q = update(models.User).where(models.User.tg_id == tg_id).values(
+        error_count=models.User.error_count + 1,
+        karma=models.User.karma - 1,
+        verification_probability=min(user.verification_probability + 0.2, 0.8)
+    )
+    session.execute(q)
+    session.commit()
 
 
 def increase_user_correct_count(
+        session: Session,
         tg_id
 ):
-    with engine.connect() as conn:
-        user = get_user(tg_id)
-        q = update(user_table).where(user_table.c.tg_id == tg_id).values(
-            correct_count=user_table.c.correct_count + 1,
-            karma=user_table.c.karma + 1,
-            verification_probability=max(user.verification_probability - 0.2, 0.15)
-        )
-        conn.execute(q)
-        session.commit()
+    user = get_user(session, tg_id)
+    q = update(models.User).where(models.User.tg_id == tg_id).values(
+        correct_count=models.User.correct_count + 1,
+        karma=models.User.karma + 1,
+        verification_probability=max(user.verification_probability - 0.2, 0.15)
+    )
+    session.execute(q)
+    session.commit()
 
 
 def user_validated_now(
+        session: Session,
         tg_id,
 ):
-    with engine.connect() as conn:
-        q = update(user_table).where(user_table.c.tg_id == tg_id).values(
-            last_validated_at=datetime.now()
+    q = update(models.User).where(models.User.tg_id == tg_id).values(
+        last_validated_at=datetime.now()
+    )
+    session.execute(q)
+    session.commit()
+
+
+def get_all_users(session: Session):
+    return session.execute(select(models.User)).scalars().all()
+
+
+async def edit_profile(session: Session, tg_id, age=None, lang=None, accent=None):
+    query = update(models.User)
+    if age is not None:
+        query = query.where(models.User.tg_id == tg_id).values(
+            year_of_birth=age
         )
-        conn.execute(q)
-        session.commit()
-
-
-def get_all_users():
-    with engine.connect() as conn:
-        q = select(user_table)
-        return conn.execute(q).fetchall()
-
-
-async def edit_profile(tg_id, age=None, lang=None, accent=None):
-    with engine.connect() as conn:
-        if age is not None:
-            q = update(user_table).where(user_table.c.tg_id == tg_id).values(
-                year_of_birth=age
-            )
-        elif lang is not None:
-            q = update(user_table).where(user_table.c.tg_id == tg_id).values(
-                native_language=lang
-            )
-        elif accent is not None:
-            q = update(user_table).where(user_table.c.tg_id == tg_id).values(
-                accent_region=accent
-            )
-        conn.execute(q)
-        session.commit()
+    elif lang is not None:
+        query = query.where(models.User.tg_id == tg_id).values(
+            native_language=lang
+        )
+    elif accent is not None:
+        query = query.where(models.User.tg_id == tg_id).values(
+            accent_region=accent
+        )
+    session.execute(query)
+    session.commit()
