@@ -42,6 +42,10 @@ class CommonVoice:
             self._session = aiohttp.ClientSession()
         return self._session
 
+    async def close(self):
+        if self._session:
+            await self._session.close()
+
     def _make_url(self, path: str):
         if not path.startswith('/'):
             path = "/" + path
